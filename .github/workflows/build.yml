@@ -3,61 +3,60 @@ name: Descargar Librerías Offline
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Permite ejecutar manualmente
+  workflow_dispatch:
 
 jobs:
   download-libraries:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ← IMPORTANTE: Permiso explícito
     
     steps:
-      # 1. Obtener el código del repositorio
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      # 2. Crear las carpetas necesarias
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # ← IMPORTANTE: Token para autenticar
+          
       - name: Create directories
         run: |
           mkdir -p libs/leaflet
           mkdir -p libs/xlsx
-          mkdir -p offline-tiles
           
-      # 3. Descargar Leaflet CSS
       - name: Download Leaflet CSS
         run: |
           curl -L -o libs/leaflet/leaflet.css https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
           
-      # 4. Descargar Leaflet JS
       - name: Download Leaflet JS
         run: |
           curl -L -o libs/leaflet/leaflet.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
           
-      # 5. Descargar Leaflet Draw CSS
       - name: Download Leaflet Draw CSS
         run: |
           curl -L -o libs/leaflet/leaflet.draw.css https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css
           
-      # 6. Descargar Leaflet Draw JS
       - name: Download Leaflet Draw JS
         run: |
           curl -L -o libs/leaflet/leaflet.draw.js https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js
           
-      # 7. Descargar SheetJS (XLSX)
       - name: Download SheetJS
         run: |
           curl -L -o libs/xlsx/xlsx.full.min.js https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
           
-      # 8. Verificar que los archivos se descargaron
       - name: Verify downloads
         run: |
           ls -la libs/leaflet/
           ls -la libs/xlsx/
           echo "✅ Todas las librerías descargadas correctamente"
           
-      # 9. Subir los cambios al repositorio
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add libs/
-          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-descarga de librerías offline"
-          git push
+          # Verificar si hay cambios antes de hacer commit
+          if git diff --staged --quiet; then
+            echo "No hay cambios para subir"
+          else
+            git commit -m "🤖 Auto-descarga de librerías offline"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
