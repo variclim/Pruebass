@@ -1,0 +1,45 @@
+name: Descargar Librerías Offline
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  download-libraries:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      # Cache de librerías para no descargar cada vez
+      - name: Cache libraries
+        uses: actions/cache@v3
+        with:
+          path: libs/
+          key: libs-cache-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: libs-cache-
+        
+      - name: Create directories
+        run: |
+          mkdir -p libs/leaflet
+          mkdir -p libs/xlsx
+          
+      - name: Download libraries (if not cached)
+        run: |
+          if [ ! -f libs/leaflet/leaflet.css ]; then
+            curl -L -o libs/leaflet/leaflet.css https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
+          fi
+          if [ ! -f libs/leaflet/leaflet.js ]; then
+            curl -L -o libs/leaflet/leaflet.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
+          fi
+          # ... etc ...
+          
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add libs/
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Librerías actualizadas"
+          git push
