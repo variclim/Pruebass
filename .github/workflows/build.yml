@@ -8,38 +8,55 @@ on:
 jobs:
   download-libraries:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write  # Permiso esencial para hacer push
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      # Cache de librerías para no descargar cada vez
-      - name: Cache libraries
-        uses: actions/cache@v3
         with:
-          path: libs/
-          key: libs-cache-${{ hashFiles('.github/workflows/build.yml') }}
-          restore-keys: libs-cache-
-        
+          token: ${{ secrets.GITHUB_TOKEN }}  # Autenticación para el push
+
       - name: Create directories
         run: |
           mkdir -p libs/leaflet
           mkdir -p libs/xlsx
-          
-      - name: Download libraries (if not cached)
+
+      - name: Download Leaflet CSS
         run: |
-          if [ ! -f libs/leaflet/leaflet.css ]; then
-            curl -L -o libs/leaflet/leaflet.css https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
-          fi
-          if [ ! -f libs/leaflet/leaflet.js ]; then
-            curl -L -o libs/leaflet/leaflet.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
-          fi
-          # ... etc ...
-          
-      - name: Commit and push
+          curl -L -o libs/leaflet/leaflet.css https://unpkg.com/leaflet@1.9.4/dist/leaflet.css
+
+      - name: Download Leaflet JS
+        run: |
+          curl -L -o libs/leaflet/leaflet.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js
+
+      - name: Download Leaflet Draw CSS
+        run: |
+          curl -L -o libs/leaflet/leaflet.draw.css https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css
+
+      - name: Download Leaflet Draw JS
+        run: |
+          curl -L -o libs/leaflet/leaflet.draw.js https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js
+
+      - name: Download SheetJS
+        run: |
+          curl -L -o libs/xlsx/xlsx.full.min.js https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
+
+      - name: Verify downloads
+        run: |
+          ls -la libs/leaflet/
+          ls -la libs/xlsx/
+          echo "✅ Todas las librerías descargadas correctamente"
+
+      - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add libs/
-          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Librerías actualizadas"
-          git push
+          # Solo hace commit y push si hay cambios
+          if git diff --staged --quiet; then
+            echo "No hay cambios para subir"
+          else
+            git commit -m "🤖 Auto-descarga de librerías offline"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
